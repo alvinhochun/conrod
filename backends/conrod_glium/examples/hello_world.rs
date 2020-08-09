@@ -47,6 +47,8 @@ fn main() {
 
     let mut should_update_ui = true;
     event_loop.run(move |event, _, control_flow| {
+        *control_flow = glium::glutin::event_loop::ControlFlow::Wait;
+
         // Break from the loop upon `Escape` or closed window.
         match &event {
             glium::glutin::event::Event::WindowEvent { event, .. } => match event {
@@ -63,6 +65,12 @@ fn main() {
                 } => *control_flow = glium::glutin::event_loop::ControlFlow::Exit,
                 _ => {}
             },
+            glium::glutin::event::Event::RedrawRequested(_) => {
+                // This is needed because `v022_conversion_fns` does not convert it
+                // to a `Redraw` event.
+                ui.needs_redraw();
+                should_update_ui = true;
+            }
             _ => {}
         }
 
@@ -87,18 +95,14 @@ fn main() {
                         .font_size(32)
                         .set(ids.text, ui);
                     
-                    // Request redraw if the `Ui` has changed.
-                    display.gl_window().window().request_redraw();
-                }
-            }
-            glium::glutin::event::Event::RedrawRequested(_) => {
-                // Draw the `Ui` if it has changed.
-                if let Some(primitives) = ui.draw_if_changed() {
-                    renderer.fill(&display, primitives, &image_map);
-                    let mut target = display.draw();
-                    target.clear_color(0.0, 0.0, 0.0, 1.0);
-                    renderer.draw(&display, &mut target, &image_map).unwrap();
-                    target.finish().unwrap();
+                    // Draw the `Ui` if it has changed.
+                    if let Some(primitives) = ui.draw_if_changed() {
+                        renderer.fill(&display, primitives, &image_map);
+                        let mut target = display.draw();
+                        target.clear_color(0.0, 0.0, 0.0, 1.0);
+                        renderer.draw(&display, &mut target, &image_map).unwrap();
+                        target.finish().unwrap();
+                    }
                 }
             }
             _ => {}

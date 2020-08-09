@@ -77,10 +77,16 @@ fn main() {
                         } => *should_exit = true,
                         _ => {}
                     },
+                    glium::glutin::event::Event::RedrawRequested(_) => {
+                        // This is needed because `v022_conversion_fns` does not convert it
+                        // to a `Redraw` event.
+                        ui.needs_redraw();
+                        *should_update_ui = true;
+                    }
                     _ => {}
                 }
             }
-            support::Request::SetUi { needs_redraw } => {
+            support::Request::SetUi { has_redrawn } => {
                 // Instantiate the conrod widgets.
                 use conrod_core::{widget, Colorable, Positionable, Sizeable, Widget};
                 let ui = &mut ui.set_widgets();
@@ -101,9 +107,6 @@ fn main() {
                     println!("{:?}", event);
                 }
 
-                *needs_redraw = ui.has_changed();
-            }
-            support::Request::Redraw => {
                 // Render the `Ui` and then display it on the screen.
                 if let Some(primitives) = ui.draw_if_changed() {
                     renderer.fill(display, primitives, &image_map);
@@ -111,6 +114,8 @@ fn main() {
                     target.clear_color(0.0, 0.0, 0.0, 1.0);
                     renderer.draw(display, &mut target, &image_map).unwrap();
                     target.finish().unwrap();
+
+                    *has_redrawn = true;
                 }
             }
         }

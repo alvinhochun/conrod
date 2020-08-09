@@ -75,10 +75,16 @@ fn main() {
                         } => *should_exit = true,
                         _ => {}
                     },
+                    glium::glutin::event::Event::RedrawRequested(_) => {
+                        // This is needed because `v022_conversion_fns` does not convert it
+                        // to a `Redraw` event.
+                        ui.needs_redraw();
+                        *should_update_ui = true;
+                    }
                     _ => {}
                 }
             }
-            support::Request::SetUi { needs_redraw } => {
+            support::Request::SetUi { has_redrawn } => {
                 // Set the triangle widget.
                 let ui = &mut ui.set_widgets();
                 let rect = ui.rect_of(ui.window).unwrap();
@@ -94,9 +100,6 @@ fn main() {
                     .with_bounding_rect(rect)
                     .set(ids.triangles, ui);
 
-                *needs_redraw = ui.has_changed();
-            }
-            support::Request::Redraw => {
                 // Draw the `Ui` if it has changed.
                 if let Some(primitives) = ui.draw_if_changed() {
                     renderer.fill(display, primitives, &image_map);
@@ -104,6 +107,8 @@ fn main() {
                     target.clear_color(0.0, 0.0, 0.0, 1.0);
                     renderer.draw(display, &mut target, &image_map).unwrap();
                     target.finish().unwrap();
+
+                    *has_redrawn = true;
                 }
             }
         }

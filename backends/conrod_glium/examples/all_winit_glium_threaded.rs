@@ -168,6 +168,7 @@ fn main() {
                         } => *should_exit = true,
                         // We must re-draw on `Resized`, as the event loops become blocked during
                         // resize on macOS.
+                        // TODO: Check if the above comment is still valid?
                         glium::glutin::event::WindowEvent::Resized(..) => {
                             if let Some(primitives) = render_rx.iter().next() {
                                 draw(display, &mut renderer, &image_map, &primitives);
@@ -175,22 +176,29 @@ fn main() {
                         }
                         _ => {}
                     },
+                    glium::glutin::event::Event::RedrawRequested(_) => {
+                        // This is needed because `v022_conversion_fns` does not convert it
+                        // to a `Redraw` event.
+                        event_tx.send(conrod_core::event::Input::Redraw).unwrap();
+                    }
                     glium::glutin::event::Event::UserEvent(()) => {
                         is_waken = true;
-                        // HACK: This triggers the `SetUi` request so that we can request a redraw.
+                        // HACK: This triggers the `SetUi` request to draw the received primitives.
                         *should_update_ui = true;
                     }
                     _ => {}
                 }
             }
-            support::Request::SetUi { needs_redraw } => {
-                *needs_redraw = is_waken;
-                is_waken = false;
-            }
-            support::Request::Redraw => {
-                // Draw the most recently received `conrod_core::render::Primitives` sent from the `Ui`.
-                if let Some(primitives) = render_rx.try_iter().last() {
-                    draw(&display, &mut renderer, &image_map, &primitives);
+            support::Request::SetUi { has_redrawn } => {
+                if is_waken {
+                    is_waken = false;
+
+                    // Draw the most recently received `conrod_core::render::Primitives` sent from the `Ui`.
+                    if let Some(primitives) = render_rx.try_iter().last() {
+                        draw(&display, &mut renderer, &image_map, &primitives);
+                    }
+
+                    *has_redrawn = true;
                 }
             }
         }
